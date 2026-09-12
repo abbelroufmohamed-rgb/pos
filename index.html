@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>POS</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#1c1b19">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root{
+    --bg:#1c1b19; --surface:#262421; --surface-2:#302d29; --surface-3:#3b3730;
+    --accent:#b8763a; --accent-text:#2a1a0c;
+    --text:#f2efe9; --text-muted:#a8a399; --border:#3f3b34;
+    --success:#6b9c5a; --danger:#c1523e;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Tajawal',sans-serif; background:var(--bg); color:var(--text); overflow:hidden; height:100vh;}
+  #root{height:100vh; display:flex; flex-direction:column;}
+  button{font-family:inherit; cursor:pointer; border:none;}
+
+  header{display:flex; align-items:center; justify-content:space-between; padding:14px 20px; background:var(--surface); border-bottom:1px solid var(--border); gap:16px;}
+  header h1{font-size:18px; font-weight:700; white-space:nowrap;}
+  .day-stat{font-size:13px; color:var(--text-muted); white-space:nowrap;}
+  .day-stat b{color:var(--text); font-weight:500;}
+  .view-toggle{display:flex; gap:6px;}
+  .view-toggle button{padding:9px 18px; border-radius:8px; background:var(--surface-3); color:var(--text-muted); font-size:13px; font-weight:500;}
+  .view-toggle button.active{background:var(--accent); color:var(--accent-text);}
+
+  main{flex:1; display:flex; overflow:hidden;}
+  .menu-side{flex:1; display:flex; flex-direction:column; overflow:hidden;}
+  .tabs{display:flex; gap:8px; padding:14px 20px 0; flex-wrap:wrap;}
+  .tab{padding:9px 18px; border-radius:20px; background:var(--surface); color:var(--text-muted); font-size:14px; font-weight:500;}
+  .tab.active{background:var(--accent); color:var(--accent-text);}
+
+  .grid{flex:1; overflow-y:auto; padding:16px 20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; align-content:start;}
+  .item-card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px; text-align:center; display:flex; flex-direction:column; gap:8px; transition:transform .08s;}
+  .item-card:active{transform:scale(0.96); background:var(--surface-2);}
+  .item-thumb{width:100%; aspect-ratio:1; border-radius:8px; background:var(--surface-3); display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  .item-thumb img{width:100%; height:100%; object-fit:cover;}
+  .item-emoji{font-size:34px;}
+  .item-name{font-size:14px; font-weight:500;}
+  .item-price{font-size:13px; color:var(--accent);}
+
+  .cart-side{width:360px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column;}
+  .cart-header{padding:16px 18px; border-bottom:1px solid var(--border); font-size:15px; font-weight:700;}
+  .cart-list{flex:1; overflow-y:auto; padding:10px 14px;}
+  .cart-empty{color:var(--text-muted); font-size:14px; text-align:center; padding:40px 10px;}
+  .cart-row{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border);}
+  .cart-row-name{flex:1; font-size:14px;}
+  .cart-row-price{font-size:13px; color:var(--text-muted);}
+  .qty-ctrl{display:flex; align-items:center; gap:6px;}
+  .qty-btn{width:26px; height:26px; border-radius:6px; background:var(--surface-3); color:var(--text); font-size:15px; display:flex; align-items:center; justify-content:center;}
+  .qty-val{min-width:18px; text-align:center; font-size:14px;}
+
+  .cart-totals{padding:14px 18px; border-top:1px solid var(--border); font-size:14px;}
+  .total-row{display:flex; justify-content:space-between; padding:4px 0; color:var(--text-muted);}
+  .total-row.grand{color:var(--text); font-size:18px; font-weight:700; padding-top:8px; border-top:1px solid var(--border); margin-top:6px;}
+
+  .pay-methods{display:flex; gap:8px; padding:0 18px 14px;}
+  .pay-btn{flex:1; padding:10px 0; border-radius:8px; background:var(--surface-3); color:var(--text-muted); font-size:13px; font-weight:500;}
+  .pay-btn.active{background:var(--accent); color:var(--accent-text);}
+
+  .checkout-btn{margin:0 18px 18px; padding:15px; border-radius:10px; background:var(--success); color:#0f1a0c; font-size:16px; font-weight:700;}
+  .checkout-btn:disabled{background:var(--surface-3); color:var(--text-muted);}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:10;}
+  .receipt{background:var(--surface); width:320px; max-height:85vh; overflow-y:auto; border-radius:14px; padding:22px; border:1px solid var(--border);}
+  .receipt h2{font-size:16px; text-align:center; margin-bottom:2px;}
+  .receipt .sub{text-align:center; font-size:12px; color:var(--text-muted); margin-bottom:14px;}
+  .receipt-line{display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--text-muted);}
+  .receipt hr{border:none; border-top:1px dashed var(--border); margin:10px 0;}
+  .qr-box{width:110px; height:110px; margin:14px auto; border:1.5px dashed var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:10px; color:var(--text-muted); padding:8px;}
+  .receipt-actions{display:flex; gap:8px; margin-top:16px;}
+  .receipt-actions button{flex:1; padding:12px 0; border-radius:8px; font-size:14px; font-weight:500;}
+  .btn-secondary{background:var(--surface-3); color:var(--text);}
+  .btn-primary{background:var(--accent); color:var(--accent-text);}
+
+  .kitchen-main{flex:1; display:flex; gap:16px; padding:16px 20px; overflow:hidden;}
+  .kitchen-col{flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--surface); border-radius:12px; border:1px solid var(--border);}
+  .kitchen-col-header{padding:14px 16px; font-size:15px; font-weight:700; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
+  .kitchen-col-header span{font-size:13px; font-weight:500; color:var(--text-muted); background:var(--surface-3); padding:2px 10px; border-radius:10px;}
+  .kitchen-col-body{flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px;}
+  .ticket{background:var(--surface-2); border-radius:10px; padding:14px; border-inline-start:4px solid var(--accent); cursor:pointer;}
+  .ticket.urgent{border-inline-start-color:var(--danger);}
+  .ticket-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .ticket-id{font-size:13px; color:var(--text-muted);}
+  .ticket-time{font-size:12px; padding:3px 9px; border-radius:12px; background:var(--surface-3); color:var(--text-muted);}
+  .ticket-time.warn{background:rgba(193,82,62,.3); color:#ffb4a3;}
+  .ticket-items div{font-size:16px; font-weight:500; padding:3px 0; display:flex; gap:8px;}
+  .ticket-items b{color:var(--accent); font-weight:700; min-width:26px;}
+  .empty-col{color:var(--text-muted); font-size:13px; text-align:center; padding:30px 10px;}
+  .hint{font-size:11px; color:var(--text-muted); text-align:center; padding:8px 0 0;}
+
+  @media print{
+    header, .menu-side, .cart-side, .kitchen-main{display:none !important;}
+    .modal-overlay{position:static; background:none;}
+    .receipt{box-shadow:none; border:none; width:100%;}
+    .receipt-actions{display:none;}
+    body{background:#fff; color:#000;}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState, useMemo, useEffect} = React;
+
+// ---- عدّل قائمة الأصناف والفئات هنا ----
+// أضف "img" برابط صورة الصنف الفعلية لعرضها بدل الأيقونة الافتراضية، مثال: img:"https://.../latte.jpg"
+const CATEGORIES = ["مشروبات ساخنة","مشروبات باردة","حلويات","مأكولات خفيفة"];
+const CATEGORY_ICON = {"مشروبات ساخنة":"☕","مشروبات باردة":"🧊","حلويات":"🍰","مأكولات خفيفة":"🥪"};
+const MENU = [
+  {id:1, name:"إسبريسو", cat:"مشروبات ساخنة", price:12, img:null},
+  {id:2, name:"لاتيه", cat:"مشروبات ساخنة", price:18, img:null},
+  {id:3, name:"كابتشينو", cat:"مشروبات ساخنة", price:17, img:null},
+  {id:4, name:"أمريكانو", cat:"مشروبات ساخنة", price:14, img:null},
+  {id:5, name:"موكا", cat:"مشروبات ساخنة", price:19, img:null},
+  {id:6, name:"آيس لاتيه", cat:"مشروبات باردة", price:20, img:null},
+  {id:7, name:"كولد برو", cat:"مشروبات باردة", price:19, img:null},
+  {id:8, name:"فرابيه", cat:"مشروبات باردة", price:22, img:null},
+  {id:9, name:"آيس أمريكانو", cat:"مشروبات باردة", price:15, img:null},
+  {id:10, name:"تشيز كيك", cat:"حلويات", price:24, img:null},
+  {id:11, name:"براوني", cat:"حلويات", price:18, img:null},
+  {id:12, name:"كروسان", cat:"مأكولات خفيفة", price:15, img:null},
+  {id:13, name:"ساندويتش دجاج", cat:"مأكولات خفيفة", price:28, img:null},
+];
+const VAT_RATE = 0.15;
+const BRANCH_NAME = "الفرع الرئيسي";
+
+// ---- إعداد Firebase (اختياري) — عبّي بياناتك هنا لاحقاً لتفعيل مزامنة حقيقية بين شاشة الكاشير وشاشة المطبخ على جهازين منفصلين ----
+const FIREBASE_CONFIG = null;
+
+function loadOrders(){
+  try { return JSON.parse(localStorage.getItem('pos_orders') || '[]'); }
+  catch(e){ return []; }
+}
+function persistOrders(orders){
+  localStorage.setItem('pos_orders', JSON.stringify(orders));
+}
+function saveOrder(order){
+  const orders = loadOrders();
+  orders.push(order);
+  persistOrders(orders);
+}
+function todayStats(){
+  const today = new Date().toDateString();
+  const orders = loadOrders().filter(o => new Date(o.time).toDateString() === today);
+  const total = orders.reduce((s,o)=>s+o.total, 0);
+  return {count: orders.length, total};
+}
+
+function CashierView({onOrderPlaced}){
+  const [activeCat, setActiveCat] = useState(CATEGORIES[0]);
+  const [cart, setCart] = useState([]);
+  const [payMethod, setPayMethod] = useState(null);
+  const [receipt, setReceipt] = useState(null);
+
+  const items = useMemo(()=> MENU.filter(m => m.cat === activeCat), [activeCat]);
+
+  function addItem(item){
+    setCart(prev => {
+      const found = prev.find(c => c.id === item.id);
+      if(found) return prev.map(c => c.id===item.id ? {...c, qty:c.qty+1} : c);
+      return [...prev, {...item, qty:1}];
+    });
+  }
+  function changeQty(id, delta){
+    setCart(prev => prev
+      .map(c => c.id===id ? {...c, qty:c.qty+delta} : c)
+      .filter(c => c.qty > 0));
+  }
+
+  const total = cart.reduce((s,c)=> s + c.price*c.qty, 0);
+  const vat = total - total/(1+VAT_RATE);
+  const subtotal = total - vat;
+
+  function checkout(){
+    if(cart.length===0 || !payMethod) return;
+    const order = {
+      id: 'ORD-' + Date.now(),
+      time: new Date().toISOString(),
+      branch: BRANCH_NAME,
+      items: cart.map(c => ({name:c.name, qty:c.qty, price:c.price})),
+      subtotal, vat, total, paymentMethod: payMethod,
+      status: 'preparing',
+    };
+    saveOrder(order);
+    setReceipt(order);
+    onOrderPlaced();
+  }
+  function newOrder(){
+    setCart([]); setPayMethod(null); setReceipt(null);
+  }
+
+  return (
+    <React.Fragment>
+      <main>
+        <div className="menu-side">
+          <div className="tabs">
+            {CATEGORIES.map(cat => (
+              <button key={cat} className={"tab" + (cat===activeCat ? " active" : "")} onClick={()=>setActiveCat(cat)}>{cat}</button>
+            ))}
+          </div>
+          <div className="grid">
+            {items.map(item => (
+              <button className="item-card" key={item.id} onClick={()=>addItem(item)}>
+                <div className="item-thumb">
+                  {item.img ? <img src={item.img} alt={item.name}/> : <span className="item-emoji">{CATEGORY_ICON[item.cat] || "🍽️"}</span>}
+                </div>
+                <div className="item-name">{item.name}</div>
+                <div className="item-price">{item.price.toFixed(2)} ر.س</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="cart-side">
+          <div className="cart-header">الطلب الحالي</div>
+          <div className="cart-list">
+            {cart.length===0 && <div className="cart-empty">اختر أصناف من القائمة لبدء الطلب</div>}
+            {cart.map(c => (
+              <div className="cart-row" key={c.id}>
+                <div>
+                  <div className="cart-row-name">{c.name}</div>
+                  <div className="cart-row-price">{c.price.toFixed(2)} ر.س</div>
+                </div>
+                <div className="qty-ctrl">
+                  <button className="qty-btn" onClick={()=>changeQty(c.id,-1)}>-</button>
+                  <span className="qty-val">{c.qty}</span>
+                  <button className="qty-btn" onClick={()=>changeQty(c.id,1)}>+</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="cart-totals">
+            <div className="total-row"><span>المجموع الفرعي</span><span>{subtotal.toFixed(2)} ر.س</span></div>
+            <div className="total-row"><span>ضريبة القيمة المضافة 15%</span><span>{vat.toFixed(2)} ر.س</span></div>
+            <div className="total-row grand"><span>الإجمالي</span><span>{total.toFixed(2)} ر.س</span></div>
+          </div>
+          <div className="pay-methods">
+            {["كاش","مدى","شبكة"].map(m => (
+              <button key={m} className={"pay-btn" + (payMethod===m ? " active" : "")} onClick={()=>setPayMethod(m)}>{m}</button>
+            ))}
+          </div>
+          <button className="checkout-btn" disabled={cart.length===0 || !payMethod} onClick={checkout}>
+            إتمام البيع
+          </button>
+        </div>
+      </main>
+
+      {receipt && (
+        <div className="modal-overlay">
+          <div className="receipt">
+            <h2>{receipt.branch}</h2>
+            <div className="sub">{receipt.id} — {new Date(receipt.time).toLocaleString('ar-SA')}</div>
+            <hr/>
+            {receipt.items.map((it,i)=>(
+              <div className="receipt-line" key={i}><span>{it.name} × {it.qty}</span><span>{(it.price*it.qty).toFixed(2)}</span></div>
+            ))}
+            <hr/>
+            <div className="receipt-line"><span>المجموع الفرعي</span><span>{receipt.subtotal.toFixed(2)}</span></div>
+            <div className="receipt-line"><span>ضريبة القيمة المضافة</span><span>{receipt.vat.toFixed(2)}</span></div>
+            <div className="receipt-line" style={{color:'var(--text)', fontWeight:700}}><span>الإجمالي</span><span>{receipt.total.toFixed(2)} ر.س</span></div>
+            <div className="receipt-line"><span>طريقة الدفع</span><span>{receipt.paymentMethod}</span></div>
+            <div className="qr-box">سيُضاف رمز الفاتورة الضريبية QR (ZATCA) هنا عند التفعيل</div>
+            <div className="receipt-actions">
+              <button className="btn-secondary" onClick={()=>window.print()}>طباعة</button>
+              <button className="btn-primary" onClick={newOrder}>طلب جديد</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </React.Fragment>
+  );
+}
+
+function minutesSince(iso){
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime())/60000));
+}
+
+function KitchenView(){
+  const [orders, setOrders] = useState(loadOrders());
+  const [, setTick] = useState(0);
+
+  useEffect(()=>{
+    const refresh = () => setOrders(loadOrders());
+    const poll = setInterval(refresh, 5000);
+    const tick = setInterval(()=> setTick(x=>x+1), 15000);
+    window.addEventListener('storage', refresh);
+    return () => { clearInterval(poll); clearInterval(tick); window.removeEventListener('storage', refresh); };
+  }, []);
+
+  function advance(id){
+    const all = loadOrders();
+    const idx = all.findIndex(o=>o.id===id);
+    if(idx<0) return;
+    all[idx].status = all[idx].status === 'preparing' ? 'ready' : 'served';
+    persistOrders(all);
+    setOrders(all);
+  }
+
+  const active = orders
+    .filter(o => o.status === 'preparing' || o.status === 'ready')
+    .sort((a,b)=> new Date(a.time) - new Date(b.time));
+  const preparing = active.filter(o=>o.status==='preparing');
+  const ready = active.filter(o=>o.status==='ready');
+
+  function Ticket({order}){
+    const mins = minutesSince(order.time);
+    const urgent = mins >= 10;
+    return (
+      <div className={"ticket" + (urgent ? " urgent" : "")} onClick={()=>advance(order.id)}>
+        <div className="ticket-top">
+          <span className="ticket-id">{order.id.slice(-6)}</span>
+          <span className={"ticket-time" + (urgent ? " warn" : "")}>منذ {mins} د</span>
+        </div>
+        <div className="ticket-items">
+          {order.items.map((it,i)=>(<div key={i}><b>×{it.qty}</b><span>{it.name}</span></div>))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <main className="kitchen-main">
+      <div className="kitchen-col">
+        <div className="kitchen-col-header">قيد التحضير <span>{preparing.length}</span></div>
+        <div className="kitchen-col-body">
+          {preparing.length===0 && <div className="empty-col">لا توجد طلبات قيد التحضير</div>}
+          {preparing.map(o => <Ticket key={o.id} order={o}/>)}
+        </div>
+      </div>
+      <div className="kitchen-col">
+        <div className="kitchen-col-header">جاهز للتسليم <span>{ready.length}</span></div>
+        <div className="kitchen-col-body">
+          {ready.length===0 && <div className="empty-col">لا توجد طلبات جاهزة</div>}
+          {ready.map(o => <Ticket key={o.id} order={o}/>)}
+          <div className="hint">اضغط على الطلب لتأكيد التسليم</div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function App(){
+  const [view, setView] = useState('cashier');
+  const [stats, setStats] = useState(todayStats());
+
+  return (
+    <React.Fragment>
+      <header>
+        <h1>{BRANCH_NAME}</h1>
+        <div className="view-toggle">
+          <button className={view==='cashier'?'active':''} onClick={()=>setView('cashier')}>الكاشير</button>
+          <button className={view==='kitchen'?'active':''} onClick={()=>setView('kitchen')}>المطبخ</button>
+        </div>
+        <div className="day-stat">مبيعات اليوم: <b>{stats.count}</b> طلب / <b>{stats.total.toFixed(2)}</b> ر.س</div>
+      </header>
+      {view === 'cashier'
+        ? <CashierView onOrderPlaced={()=>setStats(todayStats())}/>
+        : <KitchenView/>}
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
